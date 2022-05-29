@@ -1,7 +1,6 @@
 package shardkv
 
 import (
-	"sync/atomic"
 	"time"
 
 	"6.824/shardctrler"
@@ -109,20 +108,18 @@ func (kv *ShardKV) pushShard(op ShardOp) {
 		return
 	}
 	if group == kv.gid {
-		DPrintf("[%d,%d,%d]: pushShard same group: %d,pushing:%d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex, kv.pushingshard)
+		DPrintf("[%d,%d,%d]: pushShard same group: %d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex)
 		kv.mu.Unlock()
 		return
 	}
 	if kv.kvDB[Shardindex].State != migrating {
-		DPrintf("[%d,%d,%d]: pushShard already done: %d,pushing:%d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex, kv.pushingshard)
+		DPrintf("[%d,%d,%d]: pushShard already done: %d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex)
 		kv.mu.Unlock()
 		return
 	}
 
-	atomic.AddInt64(&kv.pushingshard, 1)
 	defer func() {
 		kv.mu.Lock()
-		atomic.AddInt64(&kv.pushingshard, -1)
 		kv.mu.Unlock()
 	}()
 	DPrintf("[%d,%d,%d]: pushShard: %d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex)

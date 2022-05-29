@@ -13,7 +13,7 @@ import (
 	"6.824/shardctrler"
 )
 
-const Debug = false
+const Debug = true
 
 const proportion = 8
 
@@ -77,7 +77,6 @@ type ShardKV struct {
 
 	WaitMap map[int]chan WaitMsg //key:index in raft, value:channel
 
-	pushingshard int64
 }
 
 type WaitMsg struct {
@@ -268,15 +267,20 @@ func (kv *ShardKV) ApplyDBOp(op Op, raftindex int) {
 
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	if op.ConfigNum != kv.config.Num {
+		err = ErrWrongLeader
+		DPrintf("[%d,%d,%d]: ApplyCommandMsg: %s: %s->'%s', %s'", kv.gid, kv.me, kv.config.Num, op.OpType, op.Key, value, err)
+		return
+	}
 	if kv.config.Shards[shard] != kv.gid ||
 		kv.kvDB[shard].State == invalid ||
 		kv.kvDB[shard].State == migrating {
-		DPrintf("[%d,%d,%d]: Get Wrong Group: %s,shade:%d", kv.gid, kv.me, kv.config.Num, op.Key, shard)
+		DPrintf("[%d,%d,%d]: ApplyCommandMsg Group: %s,shade:%d", kv.gid, kv.me, kv.config.Num, op.Key, shard)
 		err = ErrWrongGroup
 		return
 	}
 	if kv.kvDB[shard].State == waitMigrate {
-		DPrintf("[%d,%d,%d]: Get Shard no ready: %s,shade:%d", kv.gid, kv.me, kv.config.Num, op.Key, shard)
+		DPrintf("[%d,%d,%d]: ApplyCommandMsg Shard no ready: %s,shade:%d", kv.gid, kv.me, kv.config.Num, op.Key, shard)
 		err = ErrWrongLeader
 		return
 	}
