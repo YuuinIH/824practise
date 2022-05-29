@@ -70,6 +70,13 @@ func (l *LogEntries) Set(i int, e LogEntry) {
 
 //Discard the log entries before index.
 func (l *LogEntries) Discard(i int) {
+	if i < l.Index0 {
+		DPrintf("ERROR: index smaller than log snapshot!i: %d, Index0: %d\n", i, l.Index0)
+		panic("ERROR: index smaller than log snapshot!\n")
+	} else if i > l.Index0+len(l.LogEntries) {
+		DPrintf("ERROR: index bigger than log entries!%d,%d\n", i, l.Index0+len(l.LogEntries))
+		panic("ERROR: index bigger than log entries!\n")
+	}
 	DPrintf("discard(%d),Index0: %d,len of entries: %d\n", i, l.Index0, len(l.LogEntries))
 	l.LogEntries = append([]LogEntry{}, l.LogEntries[i-l.Index0:]...)
 	l.Index0 = i

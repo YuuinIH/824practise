@@ -147,7 +147,7 @@ func (rf *Raft) readPersist(data []byte) {
 	rf.currentTerm = currentTerm
 	rf.votedFor = votedFor
 	rf.logs = logs
-	rf.persist()
+	rf.persister.SaveRaftState(data)
 }
 
 //
@@ -397,8 +397,6 @@ type AppendEntriesRes struct {
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesRes) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	defer func() {
-	}()
 	reply.Success = false
 	reply.Term = rf.currentTerm
 	//Rule 1
@@ -466,13 +464,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesRes) 
 				break
 			}
 		}
-		rf.persist()
 	}
 	//Rule 5
 	if args.LeaderCommit > rf.commitIndex {
 		DPrintf("[%d]: AppendEntries update commitIndex: args.LeaderCommit: %d, rf.commitIndex: %d", rf.me, args.LeaderCommit, rf.commitIndex)
 		rf.commitIndex = Min(args.LeaderCommit, rf.logs.GetLastIndex())
 	}
+	rf.persist()
 	rf.cond.Broadcast()
 	reply.Success = true
 }
