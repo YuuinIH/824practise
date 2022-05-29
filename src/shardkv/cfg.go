@@ -26,7 +26,7 @@ func (kv *ShardKV) checkconfig() {
 func (kv *ShardKV) ApplyConfigOp(op ConfigOp, raftindex int) {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	DPrintf("[%d,%d,%d]: ApplyConfigOp: %v", kv.gid, kv.me, kv.config.Num, op)
+	DPrintf("[%d,%d,%d]: ApplyConfigOp: %v,raftindex: %d", kv.gid, kv.me, kv.config.Num, op, raftindex)
 	if op.Config.Num <= kv.config.Num {
 		return
 	}

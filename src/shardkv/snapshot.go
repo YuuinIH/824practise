@@ -14,7 +14,7 @@ func (kv *ShardKV) ApplySnapshotMsg(msg raft.ApplyMsg) {
 	if !kv.rf.CondInstallSnapshot(msg.SnapshotTerm, msg.SnapshotIndex, msg.Snapshot) {
 		return
 	}
-	DPrintf("[%d,%d,%d]: ApplySnapshotMsg: InstallSnapshot", kv.gid, kv.me, kv.config.Num)
+	DPrintf("[%d,%d,%d]: ApplySnapshotMsg: InstallSnapshot, SnapshotIndex:%d", kv.gid, kv.me, kv.config.Num, msg.SnapshotIndex)
 	kv.ReadSnapShot(msg.Snapshot)
 	kv.RaftlastIncludedIndex = msg.SnapshotIndex
 }

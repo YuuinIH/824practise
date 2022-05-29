@@ -118,10 +118,6 @@ func (kv *ShardKV) pushShard(op ShardOp) {
 		return
 	}
 
-	defer func() {
-		kv.mu.Lock()
-		kv.mu.Unlock()
-	}()
 	DPrintf("[%d,%d,%d]: pushShard: %d", kv.gid, kv.me, kv.config.Num, Shard.ShardIndex)
 	args := PushShardArgs{
 		Shard:     Shard,
@@ -235,7 +231,7 @@ func (kv *ShardKV) checkShardMigrate(oldcfg shardctrler.Config) {
 			}
 			switch kv.kvDB[shard].State {
 			case invalid:
-				DPrintf("[%d,%d,%d]: checkShardMigrate: %d,%s", kv.gid, kv.me, kv.config.Num, shard, kv.kvDB[shard].State)
+				DPrintf("[%d,%d,%d]: checkShardwaitMigrate: %d,%s", kv.gid, kv.me, kv.config.Num, shard, kv.kvDB[shard].State)
 				kv.kvDB[shard].State = waitMigrate
 			}
 			continue
@@ -243,7 +239,7 @@ func (kv *ShardKV) checkShardMigrate(oldcfg shardctrler.Config) {
 		if oldcfg.Shards[shard] == kv.gid {
 			switch kv.kvDB[shard].State {
 			case valid:
-				DPrintf("[%d,%d,%d]: checkShardMigrate: %d,%s", kv.gid, kv.me, kv.config.Num, shard, kv.kvDB[shard].State)
+				DPrintf("[%d,%d,%d]: checkShardneedMigrate: %d,%s", kv.gid, kv.me, kv.config.Num, shard, kv.kvDB[shard].State)
 				kv.kvDB[shard].State = migrating
 			}
 		}

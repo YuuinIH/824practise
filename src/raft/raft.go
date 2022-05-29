@@ -429,10 +429,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesRes) 
 	//entry in args.PrevLogIndex has been snapshotted in follower
 	//it means that this AppendEntriesRPC is out of date
 	if args.PrevLogIndex < rf.logs.Index0 {
-		DPrintf("[%d]: AppendEntries: log is out of date", rf.me)
-		reply.XIndex = -1
-		reply.XTerm = -1
-		reply.XLen = rf.logs.Len()
+		DPrintf("[%d]: AppendEntries: log is out of date,reply done", rf.me)
+		reply.Success = true
 		return
 	}
 
@@ -793,6 +791,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.readPersist(persister.ReadRaftState())
 
 	rf.lastApplied = rf.logs.Index0
+	rf.snapshot = rf.GetSnapshot()
 
 	// start ticker goroutine to start elections
 	go rf.ticker()

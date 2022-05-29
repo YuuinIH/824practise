@@ -13,7 +13,7 @@ import (
 	"6.824/shardctrler"
 )
 
-const Debug = false
+const Debug = true
 
 const proportion = 8
 
@@ -104,7 +104,7 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) {
 		Key:       args.Key,
 		ClientID:  args.ClientID,
 		Seq:       args.Seq,
-		ConfigNum: kv.config.Num,
+		ConfigNum: args.ConfigNum,
 	}
 	kv.mu.Unlock()
 	logindex, _, _ := kv.rf.Start(op)
@@ -164,7 +164,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 		ClientID:  args.ClientID,
 		Seq:       args.Seq,
 		Value:     args.Value,
-		ConfigNum: kv.config.Num,
+		ConfigNum: args.ConfigNum,
 	}
 	kv.mu.Unlock()
 	index, _, _ := kv.rf.Start(op)
@@ -232,6 +232,9 @@ func (kv *ShardKV) ApplyCommandMsg(msg raft.ApplyMsg) {
 		DPrintf("[%d,%d,%d]: ApplyCommandMsg less than RaftlastIncludedIndex: %d->%d,%v", kv.gid, kv.me, kv.config.Num, kv.RaftlastIncludedIndex, msg.CommandIndex, msg.Command)
 		return
 	}
+	kv.mu.Lock()
+	DPrintf("[%d,%d,%d]: ApplyCommandMsg: %d->%d,%v", kv.gid, kv.me, kv.config.Num, kv.RaftlastIncludedIndex, msg.CommandIndex, msg.Command)
+	kv.mu.Unlock()
 	switch msg.Command.(type) {
 	case Op:
 		op := msg.Command.(Op)
@@ -267,6 +270,7 @@ func (kv *ShardKV) ApplyDBOp(op Op, raftindex int) {
 
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	DPrintf("[%d,%d,%d]: ApplyCommandMsg: %s: %s->'%s',raftIndex: %d", kv.gid, kv.me, kv.config.Num, op.OpType, op.Key, op.Value, raftindex)
 	if op.ConfigNum != kv.config.Num {
 		err = ErrWrongLeader
 		DPrintf("[%d,%d,%d]: ApplyCommandMsg: %s: %s->'%s', %s'", kv.gid, kv.me, kv.config.Num, op.OpType, op.Key, value, err)
@@ -342,13 +346,23 @@ func (kv *ShardKV) putAppend(op Op, shard int) string {
 
 // Get snapshot from applyCh
 
-func (kv *ShardKV) ticker() {
+func (kv *ShardKV) ticker1() {
 	for !kv.killed() {
 		if _, isleader := kv.rf.GetState(); !isleader {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		kv.checkconfig()
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func (kv *ShardKV) ticker2() {
+	for !kv.killed() {
+		if _, isleader := kv.rf.GetState(); !isleader {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
 		kv.checkShardNeedPush()
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -416,7 +430,8 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	}
 
 	go kv.applier()
-	go kv.ticker()
+	go kv.ticker1()
+	go kv.ticker2()
 	snapshot := persister.ReadSnapshot()
 	if len(snapshot) > 0 {
 		kv.ReadSnapShot(snapshot)
