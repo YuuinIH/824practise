@@ -789,12 +789,12 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.votedFor = -1
 	rf.applyCh = applyCh
 	rf.cond = sync.NewCond(&rf.mu)
+	rf.currentTerm = rf.logs.GetLastLog().Term
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
 	rf.lastApplied = rf.logs.Index0
-	rf.currentTerm = rf.logs.GetLastLog().Term
 
 	// start ticker goroutine to start elections
 	go rf.ticker()

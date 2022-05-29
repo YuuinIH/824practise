@@ -822,7 +822,7 @@ func TestChallenge1Delete(t *testing.T) {
 	// 3 keys should also be stored in client dup tables.
 	// everything on 3 replicas.
 	// plus slop.
-	expected := 3 * (((n - 3) * 1000) + 2*3*1000 + 6000)
+	expected := 3 * (((n - 3) * 1000) + 2*3*1000 + 9000)
 	if total > expected {
 		t.Fatalf("snapshot + persisted Raft state are too big: %v > %v\n", total, expected)
 	}
