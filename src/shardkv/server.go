@@ -13,7 +13,7 @@ import (
 	"6.824/shardctrler"
 )
 
-const Debug = true
+const Debug = false
 
 const proportion = 8
 
@@ -368,6 +368,17 @@ func (kv *ShardKV) ticker2() {
 	}
 }
 
+func (kv *ShardKV) sendnullstart() {
+	for {
+		if _, isleader := kv.rf.GetState(); !isleader {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		kv.rf.Start(struct{}{})
+		return
+	}
+}
+
 //
 // servers[] contains the ports of the servers in this group.
 //
@@ -402,6 +413,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	labgob.Register(Op{})
 	labgob.Register(ShardOp{})
 	labgob.Register(ConfigOp{})
+	labgob.Register(struct{}{})
 
 	kv := new(ShardKV)
 	kv.me = me
@@ -417,6 +429,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+	DPrintf("[%d,%d,%d]: Start Raft,CommitIndex:%d,LastApplied:%d,LastIndex:%d", kv.gid, kv.me, kv.config.Num, kv.rf.GetCommitIndex(), kv.rf.GetLastApplied(), kv.rf.GetLastIndex())
 
 	kv.WaitMap = make(map[int]chan WaitMsg)
 
@@ -432,6 +445,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	go kv.applier()
 	go kv.ticker1()
 	go kv.ticker2()
+	go kv.sendnullstart()
 	snapshot := persister.ReadSnapshot()
 	if len(snapshot) > 0 {
 		kv.ReadSnapShot(snapshot)

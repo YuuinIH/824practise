@@ -52,7 +52,7 @@ type GetReply struct {
 }
 
 type PushShardArgs struct {
-	Shard     ShardComponent
+	Shard     map[int]ShardComponent // shard id -> shard component
 	ConfigNum int
 }
 

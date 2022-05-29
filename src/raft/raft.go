@@ -106,6 +106,24 @@ func (rf *Raft) GetState() (currentTerm int, isleader bool) {
 	return rf.currentTerm, isleader
 }
 
+func (rf *Raft) GetCommitIndex() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	return rf.commitIndex
+}
+
+func (rf *Raft) GetLastApplied() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	return rf.lastApplied
+}
+
+func (rf *Raft) GetLastIndex() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	return rf.logs.GetLastIndex()
+}
+
 //
 // save Raft's persistent state to stable storage,
 // where it can later be retrieved after a crash and restart.
@@ -430,6 +448,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesRes) 
 	//it means that this AppendEntriesRPC is out of date
 	if args.PrevLogIndex < rf.logs.Index0 {
 		DPrintf("[%d]: AppendEntries: log is out of date,reply done", rf.me)
+		if args.LeaderCommit > rf.commitIndex {
+			DPrintf("[%d]: AppendEntries update commitIndex: args.LeaderCommit: %d, rf.commitIndex: %d", rf.me, args.LeaderCommit, rf.commitIndex)
+			rf.commitIndex = Min(args.LeaderCommit, rf.logs.GetLastIndex())
+		}
 		reply.Success = true
 		return
 	}
@@ -735,8 +757,7 @@ func (rf *Raft) apply() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	for !rf.killed() {
-		if rf.lastApplied < rf.commitIndex {
-			rf.lastApplied++
+		if rf.lastApplied <= rf.commitIndex {
 			msg := ApplyMsg{
 				CommandValid: true,
 				Command:      rf.logs.Get(rf.lastApplied).Command,
@@ -746,6 +767,7 @@ func (rf *Raft) apply() {
 			rf.mu.Unlock()
 			rf.applyCh <- msg
 			rf.mu.Lock()
+			rf.lastApplied++
 		} else {
 			rf.cond.Wait()
 		}
