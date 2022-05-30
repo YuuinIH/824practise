@@ -346,7 +346,7 @@ func (kv *ShardKV) putAppend(op Op, shard int) string {
 
 // Get snapshot from applyCh
 
-func (kv *ShardKV) ticker1() {
+func (kv *ShardKV) tickerCheckConfig() {
 	for !kv.killed() {
 		if _, isleader := kv.rf.GetState(); !isleader {
 			time.Sleep(100 * time.Millisecond)
@@ -357,7 +357,7 @@ func (kv *ShardKV) ticker1() {
 	}
 }
 
-func (kv *ShardKV) ticker2() {
+func (kv *ShardKV) tickerCheckShardNeedPush() {
 	for !kv.killed() {
 		if _, isleader := kv.rf.GetState(); !isleader {
 			time.Sleep(100 * time.Millisecond)
@@ -368,12 +368,13 @@ func (kv *ShardKV) ticker2() {
 	}
 }
 
-func (kv *ShardKV) sendnullstart() {
-	for {
+func (kv *ShardKV) sendNullStart() {
+	for !kv.killed() {
 		if _, isleader := kv.rf.GetState(); !isleader {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+		// For the first time become leader after crash, send null start to refetch the committed log
 		kv.rf.Start(struct{}{})
 		return
 	}
@@ -443,9 +444,9 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	}
 
 	go kv.applier()
-	go kv.ticker1()
-	go kv.ticker2()
-	go kv.sendnullstart()
+	go kv.tickerCheckConfig()
+	go kv.tickerCheckShardNeedPush()
+	go kv.sendNullStart()
 	snapshot := persister.ReadSnapshot()
 	if len(snapshot) > 0 {
 		kv.ReadSnapShot(snapshot)

@@ -202,8 +202,8 @@ func (kv *ShardKV) ApplyShardOp(op ShardOp, raftindex int) {
 		kv.mu.Unlock()
 	case GCShard:
 		kv.gcShard(op)
-	case PushShard:
-		kv.pushShard(op.ShardList, op.Group, op.Confignum)
+		// case PushShard:
+		// 	kv.pushShard(op.ShardList, op.Group, op.Confignum)
 	}
 }
 
